@@ -2,7 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGO_DB_URI;
 const app = express()
 const port = process.env.PORT;
 const cors = require('cors');
@@ -23,12 +23,24 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+    const database = client.db("startupForge");
+    const startupCollection = database.collection("startups");
+
+    app.post('/api/startups', async (req, res) => {
+      const startup = req.body;
+      const result = await startupCollection.insertOne(startup);
+      res.send(result);
+    });
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
