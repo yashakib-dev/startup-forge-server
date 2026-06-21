@@ -25,6 +25,7 @@ async function run() {
 
     const database = client.db("startupForge");
     const startupCollection = database.collection("startups");
+    const opportunityCollection = database.collection("opportunities");
 
     // const { ObjectId } = require("mongodb");
     // app.get('/api/startups', async (req, res) => {
@@ -43,6 +44,7 @@ async function run() {
       res.json(result);
     });
 
+    // Startup Api
     app.post("/api/startups", async (req, res) => {
       const startup = req.body;
       const result = await startupCollection.insertOne(startup);
@@ -62,19 +64,87 @@ async function run() {
     app.patch("/api/startups/:id", async (req, res) => {
       const { id } = req.params;
 
-        const { _id, ...updatedStartup } = req.body;
+      const { _id, ...updatedStartup } = req.body;
 
       const result = await startupCollection.updateOne(
         { _id: new ObjectId(id) },
         {
           $set: {
-            ...updatedStartup
+            ...updatedStartup,
           },
         },
       );
 
       res.send(result);
     });
+
+    // Opportunity Api
+
+    app.post("/api/opportunities", async (req, res) => {
+      try {
+        const opportunity = req.body;
+
+        opportunity.createdAt = new Date();
+
+        const result = await opportunityCollection.insertOne(opportunity);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating opportunity:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+      
+    app.get("/api/opportunities", async (req, res) => {
+      try {
+        const result = await opportunityCollection.find({}).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching opportunities:", error);
+        res.status(500).send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+  
+    app.patch("/api/opportunities/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { _id, ...updatedOpportunity } = req.body;
+
+        const result = await opportunityCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              ...updatedOpportunity
+            },
+          }
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating opportunity:", error);
+        res.status(500).send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+
+    app.delete("/api/opportunities/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const result = await opportunityCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting opportunity:", error);
+        res.status(500).send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
