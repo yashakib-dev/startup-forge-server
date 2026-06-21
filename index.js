@@ -146,6 +146,18 @@ async function run() {
     });
 
 
+    // applications api
+    app.get("/api/applications", async (req, res) => {
+      try {
+        const result = await applicationCollection.find({}).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching applications:", error);
+        res.status(500).send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
