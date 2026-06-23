@@ -23,10 +23,11 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const database = client.db("startupForge");
-    const startupCollection = database.collection("startups");
-    const opportunityCollection = database.collection("opportunities");
+    const db = client.db("startupForge");
 
+    const startupCollection = db.collection("startups");
+    const opportunityCollection = db.collection("opportunities");
+    const applicationCollection = db.collection("applications");
     // const { ObjectId } = require("mongodb");
     // app.get('/api/startups', async (req, res) => {
     //   const query = {};
@@ -96,18 +97,18 @@ async function run() {
       }
     });
 
-      
     app.get("/api/opportunities", async (req, res) => {
       try {
         const result = await opportunityCollection.find({}).toArray();
         res.send(result);
       } catch (error) {
         console.error("Error fetching opportunities:", error);
-        res.status(500).send({ success: false, message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
       }
     });
 
-  
     app.patch("/api/opportunities/:id", async (req, res) => {
       try {
         const { id } = req.params;
@@ -117,18 +118,19 @@ async function run() {
           { _id: new ObjectId(id) },
           {
             $set: {
-              ...updatedOpportunity
+              ...updatedOpportunity,
             },
-          }
+          },
         );
 
         res.send(result);
       } catch (error) {
         console.error("Error updating opportunity:", error);
-        res.status(500).send({ success: false, message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
       }
     });
-
 
     app.delete("/api/opportunities/:id", async (req, res) => {
       try {
@@ -141,22 +143,128 @@ async function run() {
         res.send(result);
       } catch (error) {
         console.error("Error deleting opportunity:", error);
-        res.status(500).send({ success: false, message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
       }
     });
 
-
     // applications api
+
+    app.post("/api/applications", async (req, res) => {
+      try {
+        const applicationData = req.body;
+
+    
+        if (!applicationData.opportunityId || !applicationData.applicantId) {
+          return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const result = await db.collection("applications").insertOne({
+          ...applicationData,
+          status: "pending",
+          appliedAt: new Date(),
+        });
+
+        res.status(201).json({ success: true, id: result.insertedId });
+      } catch (error) {
+        console.error("Error inserting application:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
     app.get("/api/applications", async (req, res) => {
       try {
-        const result = await applicationCollection.find({}).toArray();
+        const query = {};
+        if (req.query.applicantId) {
+          query.applicantId = req.query.applicantId;
+        }
+        if (req.query.founderId) {
+          query.founderId = req.query.founderId;
+        }
+        if (req.query.opportunityId) {
+          query.opportunityId = req.query.opportunityId;
+        }
+        const result = await applicationCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
         console.error("Error fetching applications:", error);
-        res.status(500).send({ success: false, message: "Internal Server Error" });
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
       }
     });
 
+    app.patch("/api/applications/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { _id, ...updatedApplication } = req.body;
+
+        const result = await applicationCollection.updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              ...updatedApplication,
+            },
+          },
+        );
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating application:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+    // startup-details api
+
+    app.get("/api/startups/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        const startup = await db
+          .collection("startups")
+          .findOne({ _id: new ObjectId(id) });
+
+        if (!startup) {
+          return res.status(404).json({ error: "Startup not found" });
+        }
+
+        res.status(200).json(startup);
+      } catch (error) {
+        console.error("Error fetching startup details:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // opportunity details api
+
+    app.get("/api/opportunities/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!ObjectId.isValid(id)) {
+          return res
+            .status(400)
+            .json({ error: "Invalid opportunity ID format" });
+        }
+
+        const opportunity = await db
+          .collection("opportunities")
+          .findOne({ _id: new ObjectId(id) });
+
+        if (!opportunity) {
+          return res.status(404).json({ error: "Opportunity not found" });
+        }
+
+        res.status(200).json(opportunity);
+      } catch (error) {
+        console.error("Error fetching opportunity details:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
