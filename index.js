@@ -28,6 +28,7 @@ async function run() {
     const startupCollection = db.collection("startups");
     const opportunityCollection = db.collection("opportunities");
     const applicationCollection = db.collection("applications");
+    const plansCollection = db.collection("plans");
     // const { ObjectId } = require("mongodb");
     // app.get('/api/startups', async (req, res) => {
     //   const query = {};
@@ -99,13 +100,56 @@ async function run() {
 
     app.get("/api/opportunities", async (req, res) => {
       try {
-        const result = await opportunityCollection.find({}).toArray();
+        const { search, workType, industry } = req.query;
+
+        const query = {};
+
+        // Search by title or skills
+        if (search) {
+          query.$or = [
+            {
+              title: {
+                $regex: search,
+                $options: "i",
+              },
+            },
+            {
+              skills: {
+                $elemMatch: {
+                  $regex: search,
+                  $options: "i",
+                },
+              },
+            },
+          ];
+        }
+
+        // Filter by work type
+        if (workType) {
+          query.workType = {
+            $in: workType.split(","),
+          };
+        }
+
+        // Filter by industry
+        if (industry) {
+          query.industry = {
+            $in: industry.split(","),
+          };
+        }
+
+        const result = await opportunityCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
+
         res.send(result);
       } catch (error) {
         console.error("Error fetching opportunities:", error);
-        res
-          .status(500)
-          .send({ success: false, message: "Internal Server Error" });
+        res.status(500).send({
+          success: false,
+          message: "Internal Server Error",
+        });
       }
     });
 
@@ -155,7 +199,6 @@ async function run() {
       try {
         const applicationData = req.body;
 
-    
         if (!applicationData.opportunityId || !applicationData.applicantId) {
           return res.status(400).json({ error: "Missing required fields" });
         }
@@ -264,6 +307,15 @@ async function run() {
         console.error("Error fetching opportunity details:", error);
         res.status(500).json({ error: "Internal Server Error" });
       }
+    });
+
+    app.get("/api/plans", async (req, res) => {
+      const query = {};
+      if (req.query.plan_id) {
+        query.plan_id = req.query.plan_id;
+      }
+      const plan = await plansCollection.findOne(query);
+      res.json(plan || {});
     });
 
     // Send a ping to confirm a successful connection
