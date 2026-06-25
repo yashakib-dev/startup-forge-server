@@ -30,17 +30,7 @@ async function run() {
     const opportunityCollection = db.collection("opportunities");
     const applicationCollection = db.collection("applications");
     const plansCollection = db.collection("plans");
-    // const { ObjectId } = require("mongodb");
-    // app.get('/api/startups', async (req, res) => {
-    //   const query = {};
-    //   if (req.query._id) {
-    //     query._id = new ObjectId(req.query._id);
-    //   }
-
-    //   const cursor = startupCollection.find(query);
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
+   
     const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
     app.get("/api/startups", async (req, res) => {
       const result = await startupCollection.find().toArray();
