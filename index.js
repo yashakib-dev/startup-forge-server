@@ -6,6 +6,7 @@ const uri = process.env.MONGO_DB_URI;
 const app = express();
 const port = process.env.PORT;
 const cors = require("cors");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 
 app.use(cors());
 app.use(express.json());
@@ -45,6 +46,29 @@ async function run() {
       const result = await startupCollection.find().toArray();
       res.json(result);
     });
+
+   const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`));
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req?.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const token = authHeader?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    console.log("Decoded payload:", payload);
+    req.user = payload;
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
 
     // Startup Api
     app.post("/api/startups", async (req, res) => {
@@ -284,7 +308,7 @@ async function run() {
 
     // opportunity details api
 
-    app.get("/api/opportunities/:id", async (req, res) => {
+    app.get("/api/opportunities/:id", verifyToken, async (req, res) => {
       try {
         const { id } = req.params;
 
